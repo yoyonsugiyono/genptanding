@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Acak Pertandingan</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        /* Animasi kustom */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in {
+            animation: fadeIn 0.5s ease-out forwards;
+        }
+    </style>
+</head>
+<body class="min-h-screen bg-slate-100 text-slate-800 font-sans p-4 md:p-8">
+
+    <div class="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-6">
+        
+        <!-- Header Mobile Only -->
+        <div class="lg:col-span-12 lg:hidden mb-4 text-center">
+            <h1 class="text-2xl font-bold text-blue-700 flex justify-center items-center gap-2">
+                <i data-lucide="trophy" class="w-6 h-6"></i> Generator Pertandingan
+            </h1>
+        </div>
+
+        <!-- Kolom Kiri: Input Peserta -->
+        <div class="lg:col-span-4 bg-white rounded-xl shadow-lg border border-slate-200 flex flex-col h-fit">
+            <div class="p-5 border-b border-slate-100 bg-blue-50 rounded-t-xl">
+                <h2 class="text-lg font-bold text-slate-700 flex items-center gap-2">
+                    <i data-lucide="users" class="w-5 h-5 text-blue-600"></i> 
+                    <span id="participant-count-header">Daftar Peserta (15)</span>
+                </h2>
+                <p id="participant-status-text" class="text-sm text-slate-500 mt-1">
+                    Jumlah ganjil: 1 orang akan dapat 'Bye'.
+                </p>
+            </div>
+
+            <div class="p-5 flex-1 flex flex-col gap-4">
+                <!-- Form Input -->
+                <form id="add-form" class="flex gap-2">
+                    <input
+                        type="text"
+                        id="new-participant-input"
+                        placeholder="Tambah nama peserta..."
+                        class="flex-1 px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                    <button 
+                        type="submit" 
+                        class="bg-blue-600 hover:bg-blue-700 text-white p-2 rounded-lg transition-colors"
+                        title="Tambah"
+                    >
+                        <i data-lucide="plus" class="w-6 h-6"></i>
+                    </button>
+                </form>
+
+                <!-- List Peserta -->
+                <div class="flex-1 overflow-y-auto max-h-[400px] border rounded-lg bg-slate-50">
+                    <ul id="participant-list" class="divide-y divide-slate-200">
+                        <!-- Item peserta akan digenerate di sini oleh JS -->
+                    </ul>
+                    <div id="empty-list-msg" class="hidden p-8 text-center text-slate-400 italic">
+                        Belum ada peserta.
+                    </div>
+                </div>
+
+                <div class="flex justify-between items-center pt-2">
+                   <button 
+                    id="btn-reset"
+                    class="text-sm text-slate-500 hover:text-slate-800 flex items-center gap-1"
+                  >
+                    <i data-lucide="refresh-cw" class="w-3 h-3"></i> Reset Default
+                  </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Kolom Kanan: Hasil Acak -->
+        <div class="lg:col-span-8 flex flex-col gap-6">
+          
+            <!-- Action Button Section -->
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 text-center">
+                <h1 class="hidden lg:flex text-3xl font-extrabold text-slate-800 mb-2 justify-center items-center gap-3">
+                   <i data-lucide="trophy" class="text-yellow-500 w-8 h-8"></i> Generator Bracket Pertandingan
+                </h1>
+                <p class="text-slate-500 mb-6">Klik tombol di bawah untuk mengacak pasangan pertandingan secara adil.</p>
+                
+                <button
+                  id="btn-randomize"
+                  class="group relative px-8 py-4 rounded-full text-lg font-bold shadow-lg transform transition-all active:scale-95 bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:shadow-blue-500/30 hover:-translate-y-1 inline-flex items-center gap-2"
+                >
+                    <i data-lucide="shuffle" id="icon-shuffle" class="w-5 h-5"></i>
+                    <span id="btn-text">Acak Pertandingan</span>
+                </button>
+            </div>
+
+            <!-- Results Display -->
+            <div id="results-container" class="hidden bg-white p-6 rounded-xl shadow-lg border border-slate-200 animate-fade-in">
+                <h3 class="text-xl font-bold text-slate-800 mb-4 border-b pb-2 flex items-center gap-2">
+                    Hasil Pengundian
+                </h3>
+                
+                <div id="matches-grid" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <!-- Pertandingan akan muncul di sini -->
+                </div>
+            </div>
+
+             <!-- Empty State -->
+             <div id="empty-state" class="flex flex-col items-center justify-center py-12 text-slate-400 opacity-60">
+                <div class="bg-slate-100 p-4 rounded-full mb-3">
+                  <i data-lucide="shuffle" class="w-12 h-12"></i>
+                </div>
+                <p>Tekan tombol acak untuk melihat pasangan</p>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Script JavaScript Logika -->
+    <script>
+        // Data Awal
+        const DefaultParticipants = [
+            "Abdul Hakam", "Abdul Hakim", "Ahmat Fursanul Islami", "Ahmat Naizam Al Farizi",
+            "Ainun Iroqi", "Fatimatus Zahroh", "JAMIATUS SAFFA", "Masin Abdul Basir",
+            "Moh Fajar Al Habsy Akbar", "Moh. Alfi Sahkomar", "Mohammad Fikri Mubarok",
+            "Safa Faradila", "Trieanisha Kamelia", "Ufaira Nurirma Salsabila", "Wafira Anjani"
+        ];
+
+        // State Aplikasi
+        let participants = [...DefaultParticipants];
+        let isShuffling = false;
+
+        // Referensi DOM
+        const listContainer = document.getElementById('participant-list');
+        const emptyListMsg = document.getElementById('empty-list-msg');
+        const countHeader = document.getElementById('participant-count-header');
+        const statusText = document.getElementById('participant-status-text');
+        const inputName = document.getElementById('new-participant-input');
+        const addForm = document.getElementById('add-form');
+        const btnReset = document.getElementById('btn-reset');
+        const btnRandomize = document.getElementById('btn-randomize');
+        const btnText = document.getElementById('btn-text');
+        const iconShuffle = document.getElementById('icon-shuffle');
+        const resultsContainer = document.getElementById('results-container');
+        const matchesGrid = document.getElementById('matches-grid');
+        const emptyState = document.getElementById('empty-state');
+
+        // Fungsi Render List Peserta
+        function renderParticipants() {
+            listContainer.innerHTML = '';
+            
+            if (participants.length === 0) {
+                emptyListMsg.classList.remove('hidden');
+            } else {
+                emptyListMsg.classList.add('hidden');
+                participants.forEach((name, index) => {
+                    const li = document.createElement('li');
+                    li.className = "flex justify-between items-center p-3 hover:bg-white transition-colors group";
+                    li.innerHTML = `
+                        <span class="font-medium text-slate-700 truncate">${index + 1}. ${name}</span>
+                        <button onclick="removeParticipant(${index})" class="text-slate-400 hover:text-red-500 transition-colors" title="Hapus">
+                            <i data-lucide="trash-2" class="w-4 h-4"></i>
+                        </button>
+                    `;
+                    listContainer.appendChild(li);
+                });
+            }
+
+            // Update Header & Status
+            countHeader.textContent = `Daftar Peserta (${participants.length})`;
+            if (participants.length % 2 !== 0) {
+                statusText.textContent = "Jumlah ganjil: 1 orang akan dapat 'Bye'.";
+            } else {
+                statusText.textContent = "Jumlah genap: Semua mendapat lawan.";
+            }
+
+            // Re-initialize icons for new elements
+            lucide.createIcons();
+        }
+
+        // Fungsi Tambah Peserta
+        addForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const val = inputName.value.trim();
+            if (val) {
+                participants.push(val);
+                inputName.value = '';
+                renderParticipants();
+            }
+        });
+
+        // Fungsi Hapus Peserta (Global scope agar bisa dipanggil onclick html string)
+        window.removeParticipant = (index) => {
+            participants.splice(index, 1);
+            renderParticipants();
+        };
+
+        // Fungsi Reset
+        btnReset.addEventListener('click', () => {
+            if (confirm("Kembalikan ke daftar nama awal?")) {
+                participants = [...DefaultParticipants];
+                renderParticipants();
+                // Reset hasil juga
+                resultsContainer.classList.add('hidden');
+                emptyState.classList.remove('hidden');
+            }
+        });
+
+        // Fungsi Acak (Shuffle & Logic)
+        btnRandomize.addEventListener('click', () => {
+            if (participants.length < 2) {
+                alert("Minimal butuh 2 peserta untuk mengacak!");
+                return;
+            }
+            if (isShuffling) return;
+
+            // Set UI Loading
+            isShuffling = true;
+            btnRandomize.classList.add('bg-slate-300', 'text-slate-500', 'cursor-not-allowed');
+            btnRandomize.classList.remove('bg-gradient-to-r', 'text-white');
+            iconShuffle.classList.add('animate-spin');
+            btnText.textContent = "Sedang Mengacak...";
+            
+            // Hide previous results temporarily
+            resultsContainer.classList.add('hidden');
+            emptyState.classList.remove('hidden');
+
+            setTimeout(() => {
+                // Algoritma Fisher-Yates Shuffle
+                const shuffled = [...participants];
+                for (let i = shuffled.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+                }
+
+                // Pairing
+                const matches = [];
+                let byePlayer = null;
+
+                for (let i = 0; i < shuffled.length; i += 2) {
+                    if (i + 1 < shuffled.length) {
+                        matches.push({ p1: shuffled[i], p2: shuffled[i+1] });
+                    } else {
+                        byePlayer = shuffled[i];
+                    }
+                }
+
+                // Render Results
+                renderMatches(matches, byePlayer);
+
+                // Reset UI State
+                isShuffling = false;
+                btnRandomize.classList.remove('bg-slate-300', 'text-slate-500', 'cursor-not-allowed');
+                btnRandomize.classList.add('bg-gradient-to-r', 'text-white');
+                iconShuffle.classList.remove('animate-spin');
+                btnText.textContent = "Acak Pertandingan";
+                
+                emptyState.classList.add('hidden');
+                resultsContainer.classList.remove('hidden');
+
+            }, 600);
+        });
+
+        function renderMatches(matches, byePlayer) {
+            matchesGrid.innerHTML = '';
+
+            // Render Matches
+            matches.forEach((match, idx) => {
+                const div = document.createElement('div');
+                div.className = "bg-slate-50 border border-slate-200 rounded-xl p-4 flex flex-col items-center relative overflow-hidden group hover:border-blue-300 transition-all";
+                div.innerHTML = `
+                    <div class="absolute top-0 left-0 bg-blue-600 text-white text-xs font-bold px-2 py-1 rounded-br-lg">
+                      Match ${idx + 1}
+                    </div>
+                    <div class="flex items-center justify-between w-full mt-2">
+                      <div class="flex-1 text-center">
+                        <div class="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-2 text-blue-700">
+                          <i data-lucide="user" class="w-5 h-5"></i>
+                        </div>
+                        <p class="font-semibold text-slate-800 text-sm md:text-base break-words leading-tight">${match.p1}</p>
+                      </div>
+
+                      <div class="px-3 flex flex-col items-center">
+                        <span class="text-2xl font-black text-slate-300 italic">VS</span>
+                      </div>
+
+                      <div class="flex-1 text-center">
+                        <div class="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-2 text-red-700">
+                          <i data-lucide="user" class="w-5 h-5"></i>
+                        </div>
+                        <p class="font-semibold text-slate-800 text-sm md:text-base break-words leading-tight">${match.p2}</p>
+                      </div>
+                    </div>
+                `;
+                matchesGrid.appendChild(div);
+            });
+
+            // Render Bye Player if exists
+            if (byePlayer) {
+                const div = document.createElement('div');
+                div.className = "md:col-span-2 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 border-dashed rounded-xl p-4 flex items-center justify-center gap-4";
+                div.innerHTML = `
+                    <div class="w-12 h-12 bg-amber-100 rounded-full flex items-center justify-center text-amber-600">
+                      <i data-lucide="user-plus" class="w-6 h-6"></i>
+                    </div>
+                    <div class="text-center md:text-left">
+                      <p class="text-xs uppercase font-bold text-amber-600 tracking-wider">Lucky Pass / Bye</p>
+                      <p class="text-lg font-bold text-slate-800">${byePlayer}</p>
+                      <p class="text-sm text-slate-500">Lolos otomatis ke babak berikutnya</p>
+                    </div>
+                `;
+                matchesGrid.appendChild(div);
+            }
+
+            lucide.createIcons();
+        }
+
+        // Initial Render
+        renderParticipants();
+        lucide.createIcons();
+
+    </script>
+</body>
+</html>
